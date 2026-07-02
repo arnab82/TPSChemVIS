@@ -257,6 +257,9 @@ class JuliaProcessWorker(QObject):
             self._log_file = None
         self.finished_ok.emit(exit_code)
 
+    def is_running(self) -> bool:
+        return self._process.state() != QProcess.ProcessState.NotRunning
+
     def kill(self) -> None:
         if self._process.state() != QProcess.ProcessState.NotRunning:
             self._process.kill()

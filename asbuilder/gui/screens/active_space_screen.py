@@ -98,22 +98,40 @@ class ActiveSpaceScreen(QWidget):
             self._log.append_line("[active_space] no inputs set -- go back and build clusters first.")
             return
 
+        nao = self._chk.mol.nao
+        n_active = sum(len(c.orbitals) for c in self._clusters.clusters)
+        if nao > 300:
+            self._log.append_line(
+                f"[active_space] warning: large molecule ({nao} AOs). "
+                "Integral computation may take several minutes."
+            )
+        if n_active > 30:
+            import math
+            mem_mb = (n_active ** 4) * 8 / 1e6
+            self._log.append_line(
+                f"[active_space] warning: {n_active} active orbitals → "
+                f"h2.npy ~{mem_mb:.0f} MB. Consider a smaller active space."
+            )
+
         self._build_btn.setEnabled(False)
         self._log.append_line("[active_space] starting build_active_space...")
 
         chk, clusters, output_dir = self._chk, self._clusters, self._output_dir
         mode = "spade" if self._radio_spade.isChecked() else "manual"
-        self._log.append_line(f"[active_space] mode: {mode}")
+        self._log.append_line(f"[active_space] mode: {mode}  |  {nao} AOs  |  {n_active} active MOs")
 
         def _run():
             from asbuilder.active_space.localize_integrals import build_active_space
 
+            # Compute overlap inside the worker thread — blocks on the main
+            # thread for large molecules and freezes the GUI.
+            overlap_ao = chk.mol.intor("int1e_ovlp")
             return build_active_space(
                 mol=chk.mol,
                 mo_coeff=chk.mo_coeff,
                 mo_occ=chk.mo_occ,
                 fock_ao=None,
-                overlap_ao=chk.mol.intor("int1e_ovlp"),
+                overlap_ao=overlap_ao,
                 clusters=clusters.clusters,
                 output_dir=output_dir,
                 mode=mode,

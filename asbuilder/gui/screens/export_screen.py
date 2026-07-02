@@ -209,7 +209,7 @@ class ExportScreen(QWidget):
         if self._cmf_result_path is None or self._export_dir is None:
             self._log.append_line("[export] no CMF result -- finish CMF step first.")
             return
-        if self._worker is not None and self._worker.state() != 0:
+        if self._worker is not None and self._worker.is_running():
             self._log.append_line("[export] a job is already running.")
             return
 

@@ -46,6 +46,23 @@ def main() -> int:
     app.setApplicationName("Active Space Builder")
     app.setOrganizationName("asbuilder")
 
+    # Show a dialog for unhandled exceptions instead of silently exiting
+    _orig_excepthook = sys.excepthook
+
+    def _excepthook(exc_type, exc_value, exc_tb):
+        import traceback
+        from PyQt6.QtWidgets import QMessageBox
+        msg = "".join(traceback.format_exception(exc_type, exc_value, exc_tb))
+        dlg = QMessageBox()
+        dlg.setWindowTitle("Unexpected error")
+        dlg.setText(f"<b>{exc_type.__name__}</b>: {exc_value}")
+        dlg.setDetailedText(msg)
+        dlg.setIcon(QMessageBox.Icon.Critical)
+        dlg.exec()
+        _orig_excepthook(exc_type, exc_value, exc_tb)
+
+    sys.excepthook = _excepthook
+
     # --- resolve julia_bin ---
     julia_bin = args.julia_bin or cfg.julia_bin()
 
