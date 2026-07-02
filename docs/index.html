@@ -446,7 +446,8 @@ td:first-child{font-family:var(--mono);color:var(--text)}
 .demo-tag.active{border-color:var(--pos);color:var(--pos);background:var(--pos-dim)}
 
 /* step tabs */
-.demo-tabs{
+.demo-tabs{display:none}
+.js .demo-tabs{
   display:flex;gap:0;
   border-bottom:1px solid var(--border);
   margin-bottom:2.5rem;
@@ -465,8 +466,10 @@ td:first-child{font-family:var(--mono);color:var(--text)}
 .demo-tab.on{color:var(--pos);border-bottom-color:var(--pos)}
 
 /* step panels */
-.demo-panel{display:none}
-.demo-panel.on{display:grid;grid-template-columns:1fr 1.5fr;gap:2.5rem;align-items:start}
+.js .demo-panel{display:none}
+.js .demo-panel.on{display:grid;grid-template-columns:1fr 1.5fr;gap:2.5rem;align-items:start}
+.demo-panel{display:grid;grid-template-columns:1fr 1.5fr;gap:2.5rem;align-items:start;margin-bottom:3rem}
+.demo-panel+.demo-panel{border-top:1px solid var(--border);padding-top:3rem}
 
 .demo-desc-label{
   font-family:var(--mono);font-size:.65rem;letter-spacing:.15em;text-transform:uppercase;
@@ -1088,6 +1091,7 @@ a:focus-visible{outline:2px solid var(--pos);outline-offset:3px}
 </div><!-- .demo-wrap -->
 
 <script>
+document.documentElement.classList.add('js');
 function showStep(i){
   var tabs=document.querySelectorAll('.demo-tab');
   var panels=document.querySelectorAll('.demo-panel');
