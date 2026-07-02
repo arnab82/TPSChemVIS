@@ -1,0 +1,50 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+.venv/
+venv/
+env/
+
+# PyQt / Qt cache
+*.pyc
+
+# Project data files (user-generated, not source)
+*.qcproj/
+!my_project.qcproj/.gitkeep
+
+# Julia artifacts (downloaded by Pkg)
+*.jl.cov
+*.jl.mem
+Manifest.toml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs
+*.log
+asbuilder.log
+
+# numpy / hdf5 output
+*.npy
+*.h5
+*.hdf5
+*.jld2
+
+# Molden files (generated)
+*.molden
+cluster_map.json

@@ -1,0 +1,56 @@
+{# PT2 perturbation correction on top of a TPSCI reference. #}
+# Auto-generated -- do not edit by hand. Edit driver_pt2.jl.j2 instead.
+
+using TPSChem
+using TPSChem.QCBase
+using TPSChem.RDM
+using JLD2
+using NPZ
+using Printf
+
+println("[driver_pt2] loading CMF result from {{ cmf_result_path }}")
+@load "{{ cmf_result_path }}" ints clusters init_fspace d1 e_cmf U
+
+max_roots = {{ max_roots | default(20) }}
+nroots    = {{ nroots | default(1) }}
+
+println("[driver_pt2] building cluster eigenbasis")
+cluster_bases = TPSChem.compute_cluster_eigenbasis(ints, clusters;
+                    verbose={{ verbose | default(1) }},
+                    max_roots=max_roots,
+                    init_fspace=init_fspace,
+                    rdm1a=d1.a, rdm1b=d1.b)
+
+clustered_ham = TPSChem.extract_ClusteredTerms(ints, clusters)
+cluster_ops   = TPSChem.compute_cluster_ops(cluster_bases, ints)
+TPSChem.add_cmf_operators!(cluster_ops, cluster_bases, ints, d1.a, d1.b)
+
+ref_fock  = TPSChem.FockConfig(init_fspace)
+ci_vector = TPSChem.TPSCIstate(clusters, ref_fock, R=nroots, T=Float64)
+begin
+    seed = zeros(Float64, nroots); seed[1] = 1.0
+    ci_vector[ref_fock][TPSChem.ClusterConfig([1 for _ in clusters])] = seed
+end
+
+println("[driver_pt2] running TPSCI to get reference")
+e0, v0 = TPSChem.tpsci_ci(ci_vector, cluster_ops, clustered_ham;
+                           incremental=true,
+                           thresh_cipsi={{ thresh_cipsi | default("1e-3") }},
+                           thresh_foi={{ thresh_foi | default("1e-6") }},
+                           conv_thresh={{ conv_thresh | default("1e-7") }})
+
+println("[driver_pt2] computing PT2 correction")
+e2 = TPSChem.compute_pt2_energy(v0, cluster_ops, clustered_ham;
+                                 thresh_foi={{ thresh_pt | default("1e-8") }})
+
+@printf("[driver_pt2] E(TPSCI)     = %s\n", string(e0))
+@printf("[driver_pt2] E(TPSCI+PT2) = %s\n", string(e0 .+ e2))
+
+mkpath("{{ output_dir }}")
+jldsave("{{ output_dir }}/pt2_result.jld2"; e0=e0, e2=e2)
+open("{{ output_dir }}/energies.txt", "w") do io
+    println(io, "E(TPSCI):     ", e0)
+    println(io, "E(TPSCI+PT2): ", e0 .+ e2)
+end
+
+println("[driver_pt2] done")

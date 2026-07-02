@@ -1,0 +1,3 @@
+[submodule "asbuilder/webview/vendor/vibemol"]
+	path = asbuilder/webview/vendor/vibemol
+	url = https://github.com/evangelistalab/vibemol

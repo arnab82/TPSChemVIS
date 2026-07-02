@@ -1,0 +1,33 @@
+{#
+  One-time environment setup, NOT run per-job. Run this once whenever the
+  Julia project environment is created/updated, or whenever the target
+  Python (the one with pyscf installed) changes -- e.g. after `julia
+  --project=... instantiate`, or after moving to a new machine/allocation.
+
+  Needed because TPSChem.jl's PyCall-backed extension (pyscf_do_scf,
+  pyscf_build_ints, pyscf_fci, pyscf_write_molden, localize, ...) only
+  activates when `using PyCall` succeeds, and PyCall has to be built
+  against a specific Python interpreter first.
+#}
+using Pkg
+
+{% if python_path %}
+ENV["PYTHON"] = "{{ python_path }}"
+{% else %}
+# No explicit python_path given -- PyCall will build against (or install)
+# its own private Conda-managed Python. Set python_path= when rendering
+# this template to point PyCall at the same Python/conda env that has
+# pyscf installed, if you want TPSChem's PySCF extension to see it.
+{% endif %}
+
+Pkg.build("PyCall")
+
+using PyCall
+println("[setup_pycall] PyCall built OK, using Python at: ", PyCall.python)
+try
+    pyscf = pyimport("pyscf")
+    println("[setup_pycall] pyscf importable, version: ", pyscf.__version__)
+catch e
+    println("[setup_pycall] WARNING: pyscf not importable from this Python: ", e)
+    println("[setup_pycall]          install it there, or re-run with python_path= pointing at the right interpreter.")
+end

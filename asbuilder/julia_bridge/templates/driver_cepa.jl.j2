@@ -1,0 +1,45 @@
+{# CEPA (FOIS-CEPA) correction on top of a CMF reference. #}
+# Auto-generated -- do not edit by hand. Edit driver_cepa.jl.j2 instead.
+
+using TPSChem
+using TPSChem.QCBase
+using TPSChem.RDM
+using JLD2
+using NPZ
+using Printf
+
+println("[driver_cepa] loading CMF result from {{ cmf_result_path }}")
+@load "{{ cmf_result_path }}" ints clusters init_fspace d1 e_cmf U
+
+max_roots = {{ max_roots | default(20) }}
+nroots    = {{ nroots | default(1) }}
+
+println("[driver_cepa] building cluster eigenbasis")
+cluster_bases = TPSChem.compute_cluster_eigenbasis(ints, clusters;
+                    verbose={{ verbose | default(1) }},
+                    max_roots=max_roots,
+                    init_fspace=init_fspace,
+                    rdm1a=d1.a, rdm1b=d1.b)
+
+clustered_ham = TPSChem.extract_ClusteredTerms(ints, clusters)
+cluster_ops   = TPSChem.compute_cluster_ops(cluster_bases, ints)
+TPSChem.add_cmf_operators!(cluster_ops, cluster_bases, ints, d1.a, d1.b)
+
+v = TPSChem.SPTstate(clusters, TPSChem.FockConfig(init_fspace), cluster_bases)
+
+println("[driver_cepa] running FOIS-CEPA")
+e_cepa, v_cepa = TPSChem.do_fois_cepa(v, cluster_ops, clustered_ham;
+                                        thresh_foi={{ thresh_foi | default("1e-3") }},
+                                        max_iter={{ max_iter | default(50) }},
+                                        tol={{ tol | default("1e-8") }},
+                                        prescreen=false)
+
+@printf("[driver_cepa] E(CEPA) = %s\n", string(e_cepa))
+
+mkpath("{{ output_dir }}")
+jldsave("{{ output_dir }}/cepa_result.jld2"; e_cepa=e_cepa, v_cepa=v_cepa)
+open("{{ output_dir }}/energies.txt", "w") do io
+    println(io, "E(CEPA): ", e_cepa)
+end
+
+println("[driver_cepa] done")
