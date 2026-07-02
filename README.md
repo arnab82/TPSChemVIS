@@ -1,20 +1,18 @@
 # TPSChemVIS
 
-**TPSChemVIS** is a desktop GUI for building active spaces, running Cluster Mean-Field (CMF) orbital optimization, and launching TPSCI/SPT calculations through [TPSChem.jl](https://github.com/arnab82/TPSChem.jl).
+**TPSChemVIS** is a desktop GUI for [TPSChem.jl](https://github.com/arnab82/TPSChem.jl) — a Julia package implementing Tensor Product State (TPS) quantum chemistry methods including TPSCI, SPT, CMF, and PT2.
 
-It is designed as a point-and-click frontend to the quantum chemistry pipeline described in:
-
-> *Tensor Product State Configuration Interaction (TPSCI)* — see TPSChem.jl for references.
+TPSChemVIS provides a point-and-click interface for the full TPS pipeline: building active spaces from PySCF checkpoints, running Cluster Mean-Field (CMF) orbital optimization, and launching TPSCI/SPT/PT2 calculations — without writing a single script.
 
 ---
 
 ## Features
 
 | Step | What you do | What the app does |
-|------|-------------|-------------------|
+| ---- | ----------- | ----------------- |
 | **Load** | Pick a PySCF `.chk` checkpoint | Reads geometry, basis, MO coefficients |
 | **Visualize** | Inspect canonical MOs in 3D | Renders isosurfaces via VibeMol (in-browser, offline) |
-| **Cluster** | Assign MOs or atoms to clusters | Two modes: Manual MO assignment or SPADE atom-based partitioning |
+| **Cluster** | Assign MOs or atoms to clusters | Manual MO assignment or SPADE atom-based partitioning |
 | **Active Space** | Click "Build" | Runs SPADE SVD, writes `h0/h1/h2.npy` integrals, saves per-cluster `.molden` files |
 | **Inspect** | Review cluster orbitals in 3D | Dropdown switches between all-active and per-cluster moldens; edit `n_α / n_β` if needed |
 | **CMF** | Choose Newton / BFGS / DIIS | Streams Julia output live; saves `cmf_result.jld2` |
@@ -33,7 +31,7 @@ It is designed as a point-and-click frontend to the quantum chemistry pipeline d
 ## Requirements
 
 | Dependency | Version | Notes |
-|---|---|---|
+| ---------- | ------- | ----- |
 | Python | ≥ 3.11 | |
 | PyQt6 | ≥ 6.6 | GUI framework |
 | PyQt6-WebEngine | ≥ 6.6 | Embedded VibeMol orbital viewer |
@@ -103,7 +101,7 @@ If the directory doesn't exist it is created automatically.
 
 ### Typical workflow
 
-```
+```text
 Load checkpoint (.chk)
   ↓
 Visualize MOs (VibeMol 3D viewer)
@@ -112,7 +110,7 @@ Define clusters
   ├── Manual mode  — click MO rows to assign to clusters
   └── SPADE mode   — assign atoms per cluster; select AO types (s/p/d/f)
   ↓
-Build Active Space  →  inspects cluster moldens, verify n_α / n_β
+Build Active Space  →  inspect cluster moldens, verify n_α / n_β
   ↓
 Run CMF (Newton / BFGS / DIIS)
   ↓
@@ -137,7 +135,7 @@ Click atom rows to assign atoms to clusters. For each cluster, check which AO ty
 
 ## Command-line options
 
-```
+```text
 asbuilder [project_dir] [options]
 
 Arguments:
@@ -156,7 +154,7 @@ Options:
 
 After a full run, a project folder looks like:
 
-```
+```text
 my_project.qcproj/
 ├── project.json           # stage tracker
 ├── input.chk              # PySCF checkpoint (copied on load)
@@ -189,7 +187,7 @@ The **TPSCI/Export** screen generates a `submit.slurm` script alongside the Juli
 ## Dependencies and licenses
 
 | Package | License | Notes |
-|---|---|---|
+| ------- | ------- | ----- |
 | [PySCF](https://github.com/pyscf/pyscf) | Apache 2.0 | SCF and integral back-end |
 | [VibeMol](https://github.com/evangelistalab/vibemol) | MIT | 3D orbital viewer (git submodule) |
 | [TPSChem.jl](https://github.com/arnab82/TPSChem.jl) | See repo | CMF / TPSCI / SPT engine |
