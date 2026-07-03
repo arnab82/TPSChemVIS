@@ -253,6 +253,19 @@ def _command_parts(command: str) -> list[str]:
     return parts or [command]
 
 
+def _jmol_string(value: str | Path) -> str:
+    """Return a path as a quoted-safe Jmol script string body."""
+    path = str(Path(value).expanduser().resolve())
+    if platform.system() == "Windows":
+        path = path.replace("\\", "/")
+    return path.replace("\\", "\\\\").replace('"', '\\"')
+
+
+def molden_load_script(molden_path: str | Path) -> str:
+    """Jmol script that loads Molden orbitals, not just atoms/basis shells."""
+    return f'load "{_jmol_string(molden_path)}" FILTER "MO";'
+
+
 def launch_jmol(molden_path: str | Path | None = None) -> None:
     jar = jmol_jar_path()
     if not jar.exists():
@@ -263,7 +276,7 @@ def launch_jmol(molden_path: str | Path | None = None) -> None:
         java = find_java() or java
     args = [*_command_parts(java), "-jar", str(jar)]
     if molden_path is not None:
-        args.append(str(molden_path))
+        args.extend(["-J", molden_load_script(molden_path)])
 
     popen_kwargs: dict = {}
     if platform.system() == "Windows":

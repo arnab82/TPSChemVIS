@@ -3,6 +3,7 @@ from tempfile import TemporaryDirectory
 import unittest
 
 from asbuilder.io.chk_to_molden import normalize_molden_for_viewers
+from asbuilder.viewers.jmol import molden_load_script
 
 
 class MoldenGenerationTests(unittest.TestCase):
@@ -39,6 +40,12 @@ class MoldenGenerationTests(unittest.TestCase):
             self.assertIn("[7F]", text)
             self.assertIn("[9G]", text)
             self.assertIn("[MO]", text)
+
+    def test_jmol_molden_load_script_requests_mo_coefficients(self) -> None:
+        script = molden_load_script("/tmp/Cact.molden")
+
+        self.assertIn("Cact.molden", script)
+        self.assertIn('FILTER "MO"', script)
 
 
 if __name__ == "__main__":
