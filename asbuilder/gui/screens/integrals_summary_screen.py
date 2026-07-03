@@ -4,8 +4,8 @@ Shows:
   - A dropdown to switch between "All active (Cact.molden)" and per-cluster
     moldens.  Both are written by localize_integrals._save_moldens before
     h0/h1/h2.npy so the user can inspect orbitals first.
-  - A VibeMol pane (same widget as the viewer screen) showing the selected
-    molden.
+  - A Molden viewer pane (VibeMol embedded or desktop Jmol) showing the
+    selected molden.
   - An editable fspace table: n_alpha / n_beta cells can be corrected before
     clicking "Save & Continue", which writes the values back to the ClusterSet.
 """
@@ -30,7 +30,7 @@ from PyQt6.QtWidgets import (
 )
 
 from asbuilder.cluster.state import ClusterSet
-from asbuilder.gui.widgets.webview_panel import WebViewPanel
+from asbuilder.gui.widgets.molden_viewer_panel import MoldenViewerPanel
 
 _COLUMNS = ["Cluster", "n_orb", "n_alpha (edit)", "n_beta (edit)", "Orbitals"]
 _COL_NA = 2
@@ -76,8 +76,8 @@ class IntegralsSummaryScreen(QWidget):
         left_layout.addWidget(self._table)
         left_layout.addWidget(self._continue_btn)
 
-        # --- right panel: VibeMol viewer ---
-        self._webview = WebViewPanel(vibemol_root=vibemol_root)
+        # --- right panel: Molden viewer chooser ---
+        self._webview = MoldenViewerPanel(vibemol_root=vibemol_root)
 
         splitter = QSplitter()
         splitter.setHandleWidth(8)

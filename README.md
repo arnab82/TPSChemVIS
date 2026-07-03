@@ -11,18 +11,20 @@ TPSChemVIS provides a point-and-click interface for the full TPS pipeline: build
 | Step | What you do | What the app does |
 | ---- | ----------- | ----------------- |
 | **Load** | Pick a PySCF `.chk` checkpoint | Reads geometry, basis, MO coefficients |
-| **Visualize** | Inspect canonical MOs in 3D | Renders isosurfaces via VibeMol (in-browser, offline) |
+| **Visualize** | Inspect canonical MOs in 3D | Renders isosurfaces via VibeMol or launches desktop Jmol |
 | **Cluster** | Assign MOs or atoms to clusters | Manual MO assignment or SPADE atom-based partitioning |
 | **Active Space** | Click "Build" | Runs SPADE SVD, writes `h0/h1/h2.npy` integrals, saves per-cluster `.molden` files |
 | **Inspect** | Review cluster orbitals in 3D | Dropdown switches between all-active and per-cluster moldens; edit `n_α / n_β` if needed |
 | **CMF** | Choose Newton / BFGS / DIIS | Streams Julia output live; saves `cmf_result.jld2` |
 | **TPSCI / Export** | Set thresholds, click Run | Renders Julia driver from Jinja2 templates, runs locally or packages for HPC (SLURM) |
+| **Post-Analysis** | Load a TPSCI wavefunction | Runs TPSChem CT analysis and visualizes CT arrows, root totals, and sector weights |
 
 **Additional capabilities:**
 
 - **Resume anywhere** — Jump straight to CMF from saved integrals, or to TPSCI/Export from a saved CMF result, without restarting from scratch.
 - **Persistent config** — TPSChem.jl path is saved to `~/.asbuilder/config.json` after first setup.
 - **First-launch bootstrap** — Downloads VibeMol, clones and builds TPSChem.jl, and configures PyCall automatically.
+- **Viewer choice** — Use embedded VibeMol or install desktop Jmol on demand from the viewer panel.
 - **Navigation toolbar** — Click any pipeline step in the toolbar to jump back to it.
 - **Collapsible panels** — Settings sections collapse to a header so the log output gets more screen space.
 
@@ -35,6 +37,7 @@ TPSChemVIS provides a point-and-click interface for the full TPS pipeline: build
 | Python | ≥ 3.11 | |
 | PyQt6 | ≥ 6.6 | GUI framework |
 | PyQt6-WebEngine | ≥ 6.6 | Embedded VibeMol orbital viewer |
+| Java | current JRE | Required only for desktop Jmol |
 | PySCF | ≥ 2.4 | SCF + integral generation |
 | NumPy | ≥ 1.24 | |
 | SciPy | ≥ 1.11 | SPADE SVD |
@@ -55,6 +58,7 @@ cd TPSChemVIS
 ```
 
 VibeMol is downloaded automatically on first launch to `~/.asbuilder/vibemol`.
+Jmol is installed only when you choose **Jmol** in the viewer and click **Install Jmol**; the app downloads the official binary zip, extracts `Jmol.jar` to `~/.asbuilder/jmol/`, and launches it with Java.
 
 ### 2. Install Python dependencies
 
@@ -105,7 +109,7 @@ If the directory doesn't exist it is created automatically.
 ```text
 Load checkpoint (.chk)
   ↓
-Visualize MOs (VibeMol 3D viewer)
+Visualize MOs (VibeMol or Jmol)
   ↓
 Define clusters
   ├── Manual mode  — click MO rows to assign to clusters
@@ -116,6 +120,8 @@ Build Active Space  →  inspect cluster moldens, verify n_α / n_β
 Run CMF (Newton / BFGS / DIIS)
   ↓
 Run TPSCI / SPT / PT2 / CEPA  →  local or package for HPC
+  ↓
+Post-Analysis of wavefunction  →  CT arrow map, root-total chart, and sector-weight visualization
 ```
 
 ### Resuming from a saved calculation
@@ -146,6 +152,9 @@ Options:
   --julia-bin PATH     Julia executable (default: julia from PATH)
   --julia-project PATH Override TPSChem.jl directory (saved to config)
   --vibemol-root PATH  Path to a custom VibeMol build
+  --viewer vibemol|jmol
+                      Default orbital viewer for this launch
+  --jmol-command PATH Java executable or launcher command for desktop Jmol
   --setup              Force the TPSChem.jl setup dialog even if already configured
 ```
 
@@ -172,9 +181,14 @@ my_project.qcproj/
 ├── cmf/
 │   ├── driver_cmf.jl      # rendered CMF driver
 │   └── cmf_result.jld2    # CMF output bundle
-└── export/
+├── export/
     ├── driver_tpsci.jl    # rendered TPSCI driver
     └── export.log
+└── post_analysis/
+    ├── ct_analysis.txt
+    ├── ct_table.csv
+    ├── ct_sectors.csv
+    └── wavefunction_post_analysis.jld2
 ```
 
 ---
@@ -191,6 +205,7 @@ The **TPSCI/Export** screen generates a `submit.slurm` script alongside the Juli
 | ------- | ------- | ----- |
 | [PySCF](https://github.com/pyscf/pyscf) | Apache 2.0 | SCF and integral back-end |
 | [VibeMol](https://github.com/evangelistalab/vibemol) | MIT | 3D orbital viewer (downloaded on first launch) |
+| [Jmol](https://jmol.sourceforge.net/) | LGPL 2.0 | Optional desktop molecular viewer (installed on demand) |
 | [TPSChem.jl](https://github.com/arnab82/TPSChem.jl) | See repo | CMF / TPSCI / SPT engine |
 | [PyQt6](https://www.riverbankcomputing.com/software/pyqt/) | GPL v3 | GUI framework |
 

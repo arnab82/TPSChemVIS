@@ -106,6 +106,17 @@ def main() -> int:
         help="Path to vendored VibeMol static build",
     )
     parser.add_argument(
+        "--viewer",
+        choices=["vibemol", "jmol"],
+        default=None,
+        help="Default orbital viewer for this launch",
+    )
+    parser.add_argument(
+        "--jmol-command",
+        default=None,
+        help="Java executable or launcher command used for desktop Jmol",
+    )
+    parser.add_argument(
         "--setup", action="store_true",
         help="Force the TPSChem.jl setup dialog even if already configured",
     )
@@ -136,8 +147,13 @@ def main() -> int:
 
     sys.excepthook = _excepthook
 
+    if args.viewer:
+        cfg.set_value("viewer_backend", args.viewer)
+    if args.jmol_command:
+        cfg.set_value("jmol_command", args.jmol_command)
+
     # --- one-time VibeMol download (fast, skippable) ---
-    if not args.vibemol_root:
+    if not args.vibemol_root and cfg.viewer_backend() == "vibemol":
         _ensure_vibemol()
 
     # --- resolve julia_bin ---

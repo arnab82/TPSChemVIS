@@ -51,6 +51,7 @@ STAGES = [
     "active_space_built",  # h0/h1/h2.npy + localized_orbitals.molden written
     "cmf_run",          # cmf/ populated (optional stage -- may be skipped)
     "exported",         # export/ populated with driver + submission script
+    "post_analyzed",    # post_analysis/ populated with wavefunction analysis
 ]
 
 

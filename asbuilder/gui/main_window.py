@@ -43,6 +43,7 @@ from asbuilder.gui.screens.export_screen import ExportScreen
 from asbuilder.gui.screens.integrals_summary_screen import IntegralsSummaryScreen
 from asbuilder.gui.screens.load_screen import LoadScreen
 from asbuilder.gui.screens.molden_screen import MoldenScreen
+from asbuilder.gui.screens.post_analysis_screen import PostAnalysisScreen
 from asbuilder.gui.screens.viewer_screen import ViewerScreen
 from asbuilder.io.chk_to_molden import load_chk, provenance
 from asbuilder.project import ProjectState
@@ -80,6 +81,7 @@ class MainWindow(QMainWindow):
         self.integrals_screen = IntegralsSummaryScreen(vibemol_root=vibemol_root)
         self.cmf_screen = CMFScreen(julia_project_dir=julia_project, julia_bin=julia_bin)
         self.export_screen = ExportScreen()
+        self.post_analysis_screen = PostAnalysisScreen()
 
         self.stack = _FlexStack()
         # Allow the stack to be any height so QTimer-deferred resize works.
@@ -95,6 +97,7 @@ class MainWindow(QMainWindow):
             (self.integrals_screen,     "5. Integrals"),
             (self.cmf_screen,           "6. CMF"),
             (self.export_screen,        "7. TPSCI/Export"),
+            (self.post_analysis_screen, "8. Post-Analysis"),
         ]
         for screen, _ in self._screen_meta:
             self.stack.addWidget(screen)
@@ -181,6 +184,10 @@ class MainWindow(QMainWindow):
         # Screen 6 -> 7
         self.cmf_screen.cmf_done.connect(self._on_cmf_done)
         self.cmf_screen.cmf_skipped.connect(self._on_cmf_skipped)
+
+        # Screen 7 -> 8
+        self.export_screen.post_analysis_requested.connect(self._on_post_analysis_requested)
+        self.post_analysis_screen.analysis_done.connect(self._on_post_analysis_done)
 
     # -- slots ------------------------------------------------------------
 
@@ -275,6 +282,23 @@ class MainWindow(QMainWindow):
         )
         self.project.advance("cmf_run")
         self._goto(self.export_screen)
+        self._update_status()
+
+    def _on_post_analysis_requested(self, wavefunction_result_path: str) -> None:
+        if self.export_screen._cmf_result_path is None or self.export_screen._export_dir is None:
+            QMessageBox.warning(self, "Post-analysis", "Finish or load a TPSCI export first.")
+            return
+        julia_project = self.cmf_screen._julia_project_edit.text()
+        self.post_analysis_screen.set_inputs(
+            self.export_screen._cmf_result_path,
+            self.export_screen._export_dir,
+            julia_project=julia_project,
+            wavefunction_result_path=wavefunction_result_path,
+        )
+        self._goto(self.post_analysis_screen)
+
+    def _on_post_analysis_done(self, output_dir: str) -> None:
+        self.project.advance("post_analyzed", {"output_dir": output_dir})
         self._update_status()
 
     def _open_setup(self) -> None:

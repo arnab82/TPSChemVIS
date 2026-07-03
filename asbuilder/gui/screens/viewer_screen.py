@@ -37,7 +37,7 @@ from asbuilder.cluster.state import ClusterSet
 from asbuilder.gui.widgets.atom_table import AtomTable
 from asbuilder.gui.widgets.cluster_manager import ClusterManager
 from asbuilder.gui.widgets.orbital_table import OrbitalTable
-from asbuilder.gui.widgets.webview_panel import WebViewPanel
+from asbuilder.gui.widgets.molden_viewer_panel import MoldenViewerPanel
 from asbuilder.io.chk_to_molden import ChkContents
 
 _HA2EV = 27.211386245
@@ -156,7 +156,7 @@ class ViewerScreen(QWidget):
         self._atom_table.atom_clicked.connect(self._on_atom_clicked)
 
         # --- webview (center) ---
-        self._webview = WebViewPanel(vibemol_root=vibemol_root)
+        self._webview = MoldenViewerPanel(vibemol_root=vibemol_root)
 
         # --- cluster manager (right) ---
         self._cluster_manager = ClusterManager(self.cluster_set)

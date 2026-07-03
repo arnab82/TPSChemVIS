@@ -13,6 +13,10 @@ DEFAULT_INSTALL_DIR = _CONFIG_DIR / "TPSChem.jl"
 VIBEMOL_REPO = "https://github.com/evangelistalab/vibemol.git"
 VIBEMOL_DIR = _CONFIG_DIR / "vibemol"
 
+JMOL_LATEST_URL = "https://sourceforge.net/projects/jmol/files/latest/download"
+JMOL_DIR = _CONFIG_DIR / "jmol"
+JMOL_JAR = JMOL_DIR / "Jmol.jar"
+
 
 def load() -> dict:
     if _CONFIG_FILE.exists():
@@ -49,6 +53,19 @@ def julia_project() -> Path | None:
 
 def julia_bin() -> str:
     return get("julia_bin", "julia")
+
+
+def viewer_backend() -> str:
+    backend = str(get("viewer_backend", "vibemol")).lower()
+    return backend if backend in {"vibemol", "jmol"} else "vibemol"
+
+
+def jmol_command() -> str:
+    return get("jmol_command", "jmol")
+
+
+def jmol_jar() -> Path:
+    return JMOL_JAR
 
 
 _MAX_RECENT = 8

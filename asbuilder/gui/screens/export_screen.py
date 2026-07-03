@@ -26,7 +26,7 @@ import shutil
 import zipfile
 from pathlib import Path
 
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -100,6 +100,8 @@ def _parse_cluster_list(text: str) -> list[int]:
 
 
 class ExportScreen(QWidget):
+    post_analysis_requested = pyqtSignal(str)
+
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
         self._cmf_result_path: Path | None = None
@@ -365,6 +367,8 @@ class ExportScreen(QWidget):
         self._cancel_btn.setEnabled(False)
         package_btn         = QPushButton("Package for HPC…")
         package_btn.clicked.connect(self._on_package)
+        self._post_btn      = QPushButton("Post-Analysis")
+        self._post_btn.clicked.connect(self._on_post_analysis)
 
         btn_row = QHBoxLayout()
         btn_row.addWidget(render_btn)
@@ -372,6 +376,7 @@ class ExportScreen(QWidget):
         btn_row.addWidget(self._restart_btn)
         btn_row.addWidget(self._cancel_btn)
         btn_row.addStretch(1)
+        btn_row.addWidget(self._post_btn)
         btn_row.addWidget(package_btn)
 
         self._status = QLabel(f"Target: Julia {PINNED_JULIA_VERSION}")
@@ -576,6 +581,29 @@ class ExportScreen(QWidget):
         key = self._method_key().lower().replace("-", "_")
         return f"driver_{key}.jl"
 
+    def _result_name(self) -> str:
+        key = self._method_key()
+        if key == "TPSCI-CT":
+            return "tpsci_ct_result.jld2"
+        if key in {"TPSCI-GS", "TPSCI-OpenShell"}:
+            return "tpsci_result.jld2"
+        if key in {"PT2-CMF", "QDPT2-CMF", "PT2-TPSCI"}:
+            return "pt2_result.jld2"
+        if key == "FCI-solve":
+            return "fois_ci_result.jld2"
+        if key == "Single-Diagonalization":
+            return "single_diagonalization_result.jld2"
+        if key in {"SPT", "SPT-PT2", "SPT-Variance"}:
+            return "spt_result.jld2"
+        if key == "CEPA":
+            return "cepa_result.jld2"
+        return "tpsci_result.jld2"
+
+    def _result_path(self) -> Path | None:
+        if self._export_dir is None:
+            return None
+        return self._export_dir / self._result_name()
+
     def _on_render(self) -> None:
         if self._cmf_result_path is None or self._export_dir is None:
             self._status.setText("No CMF result set — finish the CMF step first.")
@@ -719,3 +747,13 @@ class ExportScreen(QWidget):
         self._status.setText(f"Packaged → {zip_path}")
         self._log.append_line(f"[export] HPC package saved to {zip_path}")
         self._log.append_line("[export] Transfer and submit with: sbatch submit.slurm")
+
+    def _on_post_analysis(self) -> None:
+        result_path = self._result_path()
+        if result_path is None:
+            self._log.append_line("[export] No export directory set yet.")
+            return
+        if not result_path.exists():
+            self._log.append_line(f"[export] Expected result not found yet: {result_path.name}")
+            return
+        self.post_analysis_requested.emit(str(result_path))
