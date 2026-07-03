@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtCore import QTimer, pyqtSignal
 from PyQt6.QtWidgets import QLabel, QProgressBar, QPushButton, QVBoxLayout, QWidget
 
 from asbuilder.gui.workers import MoldenWorker
@@ -41,10 +41,15 @@ class MoldenScreen(QWidget):
     def set_paths(self, chk_path: str | Path, molden_out: str | Path) -> None:
         self._chk_path = Path(chk_path)
         self._molden_out = Path(molden_out)
+        self._label.setText(f"Generating {self._molden_out.name} from {self._chk_path.name}...")
+        self._start_btn.setText("Regenerate Molden")
+        QTimer.singleShot(0, self._on_start)
 
     def _on_start(self) -> None:
         if self._chk_path is None or self._molden_out is None:
             self._label.setText("No checkpoint path set -- go back to Load.")
+            return
+        if self._worker is not None and self._worker.isRunning():
             return
         self._start_btn.setEnabled(False)
         self._progress.setVisible(True)
@@ -58,6 +63,7 @@ class MoldenScreen(QWidget):
     def _on_finished(self, result) -> None:
         chk, molden_path = result
         self._progress.setVisible(False)
+        self._start_btn.setEnabled(True)
         self._label.setText(f"Wrote {molden_path} ({chk.n_orb} orbitals).")
         self.molden_ready.emit(chk, str(molden_path))
 
