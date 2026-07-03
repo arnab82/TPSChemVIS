@@ -27,6 +27,8 @@ from typing import Any
 import numpy as np
 import scipy.linalg
 
+from asbuilder.io.chk_to_molden import normalize_molden_for_viewers
+
 
 # --------------------------------------------------------------------------
 # SPADE partitioning -- verbatim from scf_spade.ipynb
@@ -245,7 +247,9 @@ def _save_moldens(mol, Cact, Cenv, clusters, out: Path) -> None:
 
     # --- All active orbitals combined ---
     try:
-        pyscf_molden.from_mo(mol, str(out / "Cact.molden"), Cact)
+        path = out / "Cact.molden"
+        pyscf_molden.from_mo(mol, str(path), Cact)
+        normalize_molden_for_viewers(path)
         print(f" wrote Cact.molden ({Cact.shape[1]} active orbitals)")
     except Exception as e:
         print(f" [warn] Cact.molden: {e}")
@@ -253,7 +257,9 @@ def _save_moldens(mol, Cact, Cenv, clusters, out: Path) -> None:
     # --- Environment ---
     if Cenv.shape[1] > 0:
         try:
-            pyscf_molden.from_mo(mol, str(out / "Cenv.molden"), Cenv)
+            path = out / "Cenv.molden"
+            pyscf_molden.from_mo(mol, str(path), Cenv)
+            normalize_molden_for_viewers(path)
         except Exception as e:
             print(f" [warn] Cenv.molden: {e}")
 
@@ -277,6 +283,7 @@ def _save_moldens(mol, Cact, Cenv, clusters, out: Path) -> None:
         fname = out / f"cluster_{c.id}_{c.name}.molden"
         try:
             pyscf_molden.from_mo(mol, str(fname), Cc)
+            normalize_molden_for_viewers(fname)
             print(f" wrote {fname.name} ({len(cols)} orbitals)")
         except Exception as e:
             print(f" [warn] {fname.name}: {e}")

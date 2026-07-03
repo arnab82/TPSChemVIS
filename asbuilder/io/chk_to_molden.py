@@ -26,6 +26,13 @@ from typing import Any
 import numpy as np
 
 
+_JMOL_SPHERICAL_TAGS = {
+    "[5d]": "[5D]",
+    "[7f]": "[7F]",
+    "[9g]": "[9G]",
+}
+
+
 @dataclass
 class OrbitalInfo:
     """One row of the orbital table shown in the GUI (stage 2 dock panel)."""
@@ -53,6 +60,23 @@ class ChkContents:
             OrbitalInfo(index=i + 1, energy=float(self.mo_energy[i]), occupation=float(self.mo_occ[i]))
             for i in range(self.n_orb)
         ]
+
+
+def normalize_molden_for_viewers(path: str | Path) -> Path:
+    """Normalize PySCF Molden output for viewers with strict section parsing.
+
+    PySCF writes spherical basis markers as [5d], [7f], [9g]. Some Jmol
+    builds only recognize the uppercase Molden convention, then incorrectly
+    expect Cartesian d/f coefficients and report "no MO data".
+    """
+    path = Path(path)
+    text = path.read_text()
+    normalized = text
+    for old, new in _JMOL_SPHERICAL_TAGS.items():
+        normalized = normalized.replace(old, new)
+    if normalized != text:
+        path.write_text(normalized)
+    return path
 
 
 def load_chk(chk_path: str | Path, scf_key: str = "scf") -> ChkContents:
@@ -94,6 +118,7 @@ def write_molden(chk: ChkContents, out_path: str | Path) -> Path:
     out_path = Path(out_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     molden.from_mo(chk.mol, str(out_path), chk.mo_coeff, ene=chk.mo_energy, occ=chk.mo_occ)
+    normalize_molden_for_viewers(out_path)
     return out_path
 
 
