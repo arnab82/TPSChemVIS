@@ -329,7 +329,13 @@ class ExportScreen(QWidget):
         self._partition = QLineEdit("normal")
         self._nodes     = QSpinBox(); self._nodes.setRange(1, 1000); self._nodes.setValue(1)
         self._walltime  = QLineEdit("24:00:00")
-        self._threads   = QLineEdit("auto")
+        self._threads   = QComboBox()
+        self._threads.setEditable(True)
+        self._threads.addItems(["auto", "1", "2", "4", "8", "16", "32", "64"])
+        self._threads.setToolTip(
+            "Julia --threads setting for local runs and generated Slurm scripts.\n"
+            "Use 'auto' or a positive integer."
+        )
         self._mem       = QLineEdit("64G")
 
         hpc_form = QFormLayout()
@@ -338,10 +344,10 @@ class ExportScreen(QWidget):
         hpc_form.addRow("Partition",    self._partition)
         hpc_form.addRow("Nodes",        self._nodes)
         hpc_form.addRow("Walltime",     self._walltime)
-        hpc_form.addRow("Threads (-t)", self._threads)
+        hpc_form.addRow("Julia threads (-t)", self._threads)
         hpc_form.addRow("Memory",       self._mem)
 
-        hpc_group = CollapsibleSection("HPC submission (SLURM)")
+        hpc_group = CollapsibleSection("Julia runtime / HPC submission (SLURM)")
         hpc_group.set_body_layout(hpc_form)
 
         # ── preview tabs ─────────────────────────────────────────────
@@ -581,6 +587,9 @@ class ExportScreen(QWidget):
         key = self._method_key().lower().replace("-", "_")
         return f"driver_{key}.jl"
 
+    def _thread_setting(self) -> str:
+        return self._threads.currentText().strip() or "auto"
+
     def _result_name(self) -> str:
         key = self._method_key()
         if key == "TPSCI-CT":
@@ -620,7 +629,7 @@ class ExportScreen(QWidget):
                 nodes         = self._nodes.value(),
                 walltime      = self._walltime.text(),
                 mem           = self._mem.text(),
-                threads       = self._threads.text(),
+                threads       = self._thread_setting(),
                 driver_script = self._driver_name(),
                 julia_project = str(self._julia_project or "."),
                 use_juliaup   = False,
@@ -675,6 +684,7 @@ class ExportScreen(QWidget):
             driver_path, julia_project,
             parent=self,
             log_path=self._export_dir / "export.log",
+            threads=self._thread_setting(),
         )
         self._worker.line_received.connect(self._log.append_line)
         self._worker.finished_ok.connect(self._on_run_finished)
@@ -722,7 +732,7 @@ class ExportScreen(QWidget):
             nodes         = self._nodes.value(),
             walltime      = self._walltime.text(),
             mem           = self._mem.text(),
-            threads       = self._threads.text(),
+            threads       = self._thread_setting(),
             driver_script = self._driver_name(),
             julia_project = ".",
             use_juliaup   = False,

@@ -30,6 +30,31 @@ class JuliaVersionError(RuntimeError):
     pass
 
 
+def julia_thread_args(threads: str | int | None) -> list[str]:
+    """Return Julia CLI args for the requested thread count.
+
+    Accepts ``auto`` or a positive integer. Blank/``None`` leaves Julia's
+    default unchanged, which is useful for non-calculation helper scripts.
+    """
+    if threads is None:
+        return []
+
+    value = str(threads).strip().lower()
+    if not value:
+        return []
+    if value == "auto":
+        return ["--threads=auto"]
+
+    try:
+        nthreads = int(value)
+    except ValueError as exc:
+        raise ValueError("Julia threads must be 'auto' or a positive integer.") from exc
+
+    if nthreads < 1:
+        raise ValueError("Julia threads must be 'auto' or a positive integer.")
+    return [f"--threads={nthreads}"]
+
+
 def _env() -> Environment:
     # StrictUndefined: fail loudly on a missing template variable instead of
     # silently rendering "" into a driver script -- wrong integrals paths
@@ -114,6 +139,7 @@ def run_julia_streaming(
     project_dir: str | Path,
     julia_bin: str = "julia",
     extra_args: list[str] | None = None,
+    threads: str | int | None = None,
     check_version: bool = True,
 ) -> Iterator[str]:
     """Launch `julia --project=<project_dir> <script_path>` and yield stdout
@@ -127,7 +153,13 @@ def run_julia_streaming(
     if check_version:
         check_julia_version(julia_bin)
 
-    cmd = [julia_bin, f"--project={project_dir}", *(extra_args or []), str(script_path)]
+    cmd = [
+        julia_bin,
+        f"--project={project_dir}",
+        *julia_thread_args(threads),
+        *(extra_args or []),
+        str(script_path),
+    ]
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
     assert proc.stdout is not None
     try:

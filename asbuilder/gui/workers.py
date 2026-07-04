@@ -210,12 +210,14 @@ class JuliaProcessWorker(QObject):
         julia_bin: str = "julia",
         parent: QObject | None = None,
         log_path: str | Path | None = None,
+        threads: str | int | None = None,
     ) -> None:
         super().__init__(parent)
         self._script_path = str(script_path)
         self._project_dir = str(project_dir)
         self._julia_bin = julia_bin
         self._log_path = Path(log_path) if log_path else None
+        self._threads = threads
         self._log_file = None
         self._process = QProcess(self)
         self._process.setProcessChannelMode(QProcess.ProcessChannelMode.MergedChannels)
@@ -224,14 +226,20 @@ class JuliaProcessWorker(QObject):
         self._process.errorOccurred.connect(lambda err: self.failed.emit(f"QProcess error: {err}"))
 
     def start(self) -> None:
-        from asbuilder.julia_bridge.runner import JuliaVersionError, check_julia_version
+        from asbuilder.julia_bridge.runner import JuliaVersionError, check_julia_version, julia_thread_args
 
         try:
             version = check_julia_version(self._julia_bin)
+            thread_args = julia_thread_args(self._threads)
         except JuliaVersionError as exc:
             self.failed.emit(str(exc))
             return
+        except ValueError as exc:
+            self.failed.emit(str(exc))
+            return
         self.line_received.emit(f"[julia] using Julia {version}")
+        if thread_args:
+            self.line_received.emit(f"[julia] launch threads: {thread_args[0].split('=', 1)[1]}")
 
         if self._log_path:
             try:
@@ -240,7 +248,7 @@ class JuliaProcessWorker(QObject):
             except Exception:
                 self._log_file = None
 
-        args = [f"--project={self._project_dir}", self._script_path]
+        args = [f"--project={self._project_dir}", *thread_args, self._script_path]
         self._process.start(self._julia_bin, args)
 
     def _on_ready_read(self) -> None:

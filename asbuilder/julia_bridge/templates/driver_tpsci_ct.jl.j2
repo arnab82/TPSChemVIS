@@ -30,6 +30,7 @@ using TPSChem.RDM
 using JLD2
 using Printf
 
+println("[tpsci_ct] Julia threads = ", Base.Threads.nthreads())
 println("[tpsci_ct] loading CMF result from {{ cmf_result_path }}")
 @load "{{ cmf_result_path }}" ints clusters init_fspace d1 e_cmf U
 
