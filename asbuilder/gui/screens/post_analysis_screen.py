@@ -545,7 +545,7 @@ class PostAnalysisScreen(QWidget):
 
         self._wavefunction_key = QComboBox()
         self._wavefunction_key.setEditable(True)
-        self._wavefunction_key.addItems(["auto", "v0", "v0a", "v_guess", "v_updated_pt1", "v_ci"])
+        self._wavefunction_key.addItems(["auto", "v0", "v_var", "v0a", "v_guess", "v_updated_pt1", "v_ci"])
 
         self._nroots = QSpinBox()
         self._nroots.setRange(1, 100)

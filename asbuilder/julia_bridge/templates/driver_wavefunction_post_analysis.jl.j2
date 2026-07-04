@@ -4,10 +4,10 @@
   Follows the charge-transfer analysis pattern in TPSCI-TM_data/.../ct-analysis.jl,
   but uses TPSChem directly instead of FermiCG. It loads:
     - CMF bundle: ints, clusters, d1, init_fspace
-    - TPSCI-like result bundle: v0 / v0a / v_guess / v_updated_pt1 / ...
+    - TPSCI/SPT result bundle: v0 / v_var / v_ci / v_guess / v_updated_pt1 / ...
 
   Outputs:
-    - ct_analysis.txt       TPSChem.general_ct_table + general_ct_analysis output
+    - ct_analysis.txt       charge-transfer table and sector breakdown
     - ct_table.csv          root,total_ct
     - ct_sectors.csv        root,sector weights above threshold
     - wavefunction_post_analysis.jld2
@@ -42,19 +42,19 @@ function pick_wavefunction(data, requested_key)
         haskey(data, requested_key) || error("wavefunction key not found: " * requested_key)
         return requested_key, data[requested_key]
     end
-    for key in ["v0", "v0a", "v_ci", "v_guess", "v_updated_pt1", "ci_vector"]
+    for key in ["v0", "v_var", "v0a", "v_ci", "v_guess", "v_updated_pt1", "ci_vector"]
         if haskey(data, key)
             return key, data[key]
         end
     end
-    error("could not find a TPSCI wavefunction key. Available keys: " * join(collect(keys(data)), ", "))
+    error("could not find a TPSChem wavefunction key. Available keys: " * join(collect(keys(data)), ", "))
 end
 
 wavefunction_key, psi = pick_wavefunction(result_data, requested_key)
 println("[post] selected wavefunction key = ", wavefunction_key)
 
-if !(psi isa TPSChem.TPSCIstate)
-    error("selected object is not a TPSChem.TPSCIstate: " * string(typeof(psi)))
+if !((psi isa TPSChem.TPSCIstate) || (psi isa TPSChem.SPTstate))
+    error("selected object is not a TPSChem.TPSCIstate or TPSChem.SPTstate: " * string(typeof(psi)))
 end
 
 nroots = min(requested_nroots, TPSChem.nroots(psi))
@@ -69,18 +69,36 @@ function csv_field(x)
     return "\"" * replace(s, "\"" => "\"\"") * "\""
 end
 
-function ct_weight_data(state, ne_ref, nroots; thresh=1e-5)
+function sector_weight_tpsci(configs, root)
+    prob = 0.0
+    for (_, coeff) in configs
+        prob += coeff[root] * coeff[root]
+    end
+    return prob
+end
+
+function sector_weight_spt(configs, root)
+    prob = 0.0
+    for (_, tucker) in configs
+        # SPTstate stores each sector as TuckerConfig => Tucker. TPSChem's
+        # SPT CT table uses the orthonormal-core norm for the sector weight.
+        prob += sum(tucker.core[root] .^ 2)
+    end
+    return prob
+end
+
+function is_ct_fock(fock, ne_ref, nclusters)
+    return any(c -> sum(fock[c]) != ne_ref[c], 1:nclusters)
+end
+
+function ct_weight_data(state::TPSChem.TPSCIstate, ne_ref, nroots; thresh=1e-5)
     totals = zeros(Float64, nroots)
     rows = NamedTuple[]
     for root in 1:nroots
         for (fock, configs) in state.data
-            is_ct = any(c -> sum(fock[c]) != ne_ref[c], 1:length(state.clusters))
-            is_ct || continue
+            is_ct_fock(fock, ne_ref, length(state.clusters)) || continue
 
-            prob = 0.0
-            for (_, coeff) in configs
-                prob += coeff[root] * coeff[root]
-            end
+            prob = sector_weight_tpsci(configs, root)
             totals[root] += prob
 
             if prob > thresh
@@ -96,6 +114,63 @@ function ct_weight_data(state, ne_ref, nroots; thresh=1e-5)
     return totals, rows
 end
 
+function ct_weight_data(state::TPSChem.SPTstate, ne_ref, nroots; thresh=1e-5)
+    totals = zeros(Float64, nroots)
+    rows = NamedTuple[]
+    for root in 1:nroots
+        for (fock, tucker_configs) in state.data
+            is_ct_fock(fock, ne_ref, length(state.clusters)) || continue
+
+            prob = sector_weight_spt(tucker_configs, root)
+            totals[root] += prob
+
+            if prob > thresh
+                push!(rows, (
+                    root=root,
+                    weight=prob,
+                    n_configs=length(tucker_configs),
+                    fock_space=fock_string(fock),
+                ))
+            end
+        end
+    end
+    return totals, rows
+end
+
+function print_ct_table(totals)
+    @printf(" -----------------------\n")
+    @printf(" --- CHARGE TRANSFER ---\n")
+    @printf(" -----------------------\n")
+    @printf(" %-15s%-10s\n", "Root", "Total CT")
+    @printf(" %-15s%-10s\n", "-------", "---------")
+    for root in 1:length(totals)
+        @printf(" %-15i%-10.5f\n", root, totals[root])
+    end
+end
+
+function print_ct_analysis(rows, totals, nroots; thresh=1e-5)
+    for root in 1:nroots
+        println()
+        @printf(" --------------------------------------------------\n")
+        @printf(" ----------- CHARGE TRANSFER ANALYSIS -------------\n")
+        @printf(" --------------------------------------------------\n")
+        @printf(" ----------                root ------:     = %5i  \n", root)
+        @printf(" --------------------------------------------------\n")
+        @printf(" Printing contributions greater than: %f\n", thresh)
+        @printf(" %-20s%-20s%-20s\n", "Weight", "# Configs", "Fock space(α,β)...")
+        @printf(" %-20s%-20s%-20s\n", "-------", "---------", "----------")
+
+        for row in rows
+            row.root == root || continue
+            @printf(" %-20.5f%-20i%s\n", row.weight, row.n_configs, row.fock_space)
+        end
+
+        @printf(" --------------------------------------------------\n")
+        @printf(" %-10.5f %-10s\n", totals[root], "=   Total charge transfer weight")
+        @printf(" --------------------------------------------------\n")
+    end
+end
+
 mkpath(output_dir)
 analysis_txt = joinpath(output_dir, "ct_analysis.txt")
 table_csv = joinpath(output_dir, "ct_table.csv")
@@ -105,6 +180,7 @@ analysis_jld2 = joinpath(output_dir, "wavefunction_post_analysis.jld2")
 println("[post] clusters        = ", length(clusters))
 println("[post] integral type   = ", typeof(ints))
 println("[post] RDM1 type       = ", typeof(d1))
+println("[post] wavefunction type = ", typeof(psi))
 println("[post] init_fspace     = ", init_fspace)
 println("[post] ne_ref          = ", ne_ref)
 println("[post] nroots analyzed = ", nroots)
@@ -134,9 +210,9 @@ open(analysis_txt, "w") do io
         println("[post] init_fspace: ", init_fspace)
         println("[post] ne_ref: ", ne_ref)
         println()
-        TPSChem.general_ct_table(psi; ne_ref=ne_ref, nroots=nroots)
+        print_ct_table(totals)
         println()
-        TPSChem.general_ct_analysis(psi; ne_ref=ne_ref, thresh=ct_thresh, nroots=nroots)
+        print_ct_analysis(sector_rows, totals, nroots; thresh=ct_thresh)
     end
 end
 
